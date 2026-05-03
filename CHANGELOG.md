@@ -2,6 +2,25 @@
 * **Removed**
 * **Bug Fix**
 * **Enhancement**
+
+## Release Date: 2026-04-28 Valhalla 3.7.0
+* **Removed**
+   * REMOVED: Removed ability to set ISO:3166 country/state code per OSM Node [#5747](https://github.com/valhalla/valhalla/pull/5747)
+   * REMOVED: all module-level `logging` config in favor of a global one
+* **Bug Fix**
+   * FIXED: Clamp grades on bridges and tunnels. [#5728](https://github.com/valhalla/valhalla/pull/5728)
+   * FIXED: use pedestrian costing on end location in `auto_pedestrian` costing [#5903](https://github.com/valhalla/valhalla/pull/5903)
+   * FIXED: Point at `begin_shape_index` should be on the edge even if trace has discontinuities [#5908](https://github.com/valhalla/valhalla/pull/5908)
+   * FIXED: Empty "edges" in `/trace_attributes` response for `walk_or_snap`, that also causes SIGSEGV if elevation requested [#5945](https://github.com/valhalla/valhalla/pull/5945)
+   * FIXED: keep `highway=platform` routable while classifying it as `service_other` instead of `primary` [#5913](https://github.com/valhalla/valhalla/pull/5913)
+   * FIXED: Fix overestimated number of entries in `UnorderedIdTable::deserialize` [#5969](https://github.com/valhalla/valhalla/pull/5969)
+   * FIXED: cleanup pkg-config to set the right variables [#5965](https://github.com/valhalla/valhalla/pull/5965)
+   * FIXED: super trivial connections snapping to excluded edges in CostMatrix [#5996](https://github.com/valhalla/valhalla/pull/5996)
+   * FIXED: edge walking should not end on a shortcut [#6034](https://github.com/valhalla/valhalla/pull/6034)
+   * FIXED: Exclusion check in the reverse direction [#5375](https://github.com/valhalla/valhalla/pull/5375)
+   * FIXED: `edge_walk` returning error 443 for trivial single-edge traces [#6046](https://github.com/valhalla/valhalla/issues/6046)
+   * FIXED: set interrupt in optimized_route action [#6019](https://github.com/valhalla/valhalla/pull/6019)
+* **Enhancement**
    * ADDED: multimodal costing `auto_pedestrian` [#5780](https://github.com/valhalla/valhalla/pull/5780)
    * CHANGED: remove `baldr::{Location,PathLocation}` and use their protobuf versions instead [#5906](https://github.com/valhalla/valhalla/pull/5906) 
    * ADDED: `Cache-Control = public, max-age=N"` response header to `/tile` requests; also added RPATH to local debug builds to fix ldd resolving when libvalhalla is installed system-wide [#5902](https://github.com/valhalla/valhalla/pull/5902)
