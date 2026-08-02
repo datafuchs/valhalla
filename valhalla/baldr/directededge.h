@@ -1297,9 +1297,9 @@ protected:
   StopOrLine stopimpact_;
 
   // Local edge index, opposing local index, shortcut info
-  uint32_t localedgeidx_ : 7;  // Index of the edge on the local level
-  uint32_t opp_local_idx_ : 7; // Opposing local edge index (for costing and Uturn detection)
-  uint32_t shortcut_ : 7;      // Shortcut edge (mask)
+  uint32_t localedgeidx_ : 9;  // Index of the edge on the local level
+  uint32_t opp_local_idx_ : 6; // Opposing local edge index (for costing and Uturn detection)
+  uint32_t shortcut_ : 6;      // Shortcut edge (mask)
   uint32_t superseded_ : 7;    // Edge is superseded by a shortcut (mask)
   uint32_t is_shortcut_ : 1;   // True if this edge is a shortcut
   uint32_t speed_type_ : 1;    // Speed type (used in setting default speeds)
