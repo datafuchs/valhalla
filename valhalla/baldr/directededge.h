@@ -1293,18 +1293,36 @@ protected:
     uint32_t lineid;
   };
 
-  // 6th 8-byte word (this union plus the next uint32_t bitfield)
+  // 6th word (this union) plus a 7th 8-byte word (the uint64_t bitfield below)
   StopOrLine stopimpact_;
 
-  // Local edge index, opposing local index, shortcut info
-  uint32_t localedgeidx_ : 7;  // Index of the edge on the local level
-  uint32_t opp_local_idx_ : 7; // Opposing local edge index (for costing and Uturn detection)
-  uint32_t shortcut_ : 7;      // Shortcut edge (mask)
-  uint32_t superseded_ : 7;    // Edge is superseded by a shortcut (mask)
-  uint32_t is_shortcut_ : 1;   // True if this edge is a shortcut
-  uint32_t speed_type_ : 1;    // Speed type (used in setting default speeds)
-  uint32_t named_ : 1;         // 1 if this edge has names, 0 if unnamed
-  uint32_t link_ : 1;          // *link tag - Ramp or turn channel. Used in costing.
+  // Local edge index, opposing local index, shortcut info.
+  //
+  // DATAFUCHS (fi-3.8.3-patches): widened from a 32-bit to a 64-bit bitfield.
+  // Finnish rail+bus interchange stations reach 408 edges at one node, past
+  // upstream's 127 limit, so localedgeidx_ needs 9 bits. The 3.6.3-era patch
+  // bought those bits by narrowing opp_local_idx_ 7->6 and shortcut_ 7->6 to
+  // keep the word at 32 bits, which introduced TWO silent corruptions:
+  //   * opp_local_idx_ at 6 bits holds 0-63, but set_opp_local_idx() clamps
+  //     to kMaxEdgesPerNode (511) -- every opposing index above 63 was
+  //     truncated, i.e. most edges at exactly the stations the patch existed
+  //     to support (u-turn detection + costing read this field).
+  //   * shortcut_ at 6 bits cannot hold 1 << (kMaxShortcutsFromNode - 1)
+  //     = 1 << 6 = 64, so a node's 7th shortcut was silently dropped.
+  // Taking a whole 8-byte word instead removes the bit budget entirely: no
+  // field is narrowed and no upstream constant changes. Cost is 8 bytes per
+  // directed edge (~70 MB on an 8.8M-edge national graph, ~1%), paid once in
+  // a tile format we are regenerating anyway. No static_assert guards these
+  // struct sizes; every reader/writer uses sizeof(), verified 2026-08-03.
+  uint64_t localedgeidx_ : 9;  // Index of the edge on the local level (0-511)
+  uint64_t opp_local_idx_ : 9; // Opposing local edge index (for costing and Uturn detection)
+  uint64_t shortcut_ : 7;      // Shortcut edge (mask)
+  uint64_t superseded_ : 7;    // Edge is superseded by a shortcut (mask)
+  uint64_t is_shortcut_ : 1;   // True if this edge is a shortcut
+  uint64_t speed_type_ : 1;    // Speed type (used in setting default speeds)
+  uint64_t named_ : 1;         // 1 if this edge has names, 0 if unnamed
+  uint64_t link_ : 1;          // *link tag - Ramp or turn channel. Used in costing.
+  uint64_t spare6_ : 28;       // Spare bits in the widened word
 };
 
 /**

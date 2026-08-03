@@ -14,7 +14,7 @@
 namespace valhalla {
 namespace baldr {
 
-constexpr uint32_t kMaxEdgesPerNode = 127;    // Maximum edges per node
+constexpr uint32_t kMaxEdgesPerNode = 511;  // DATAFUCHS: 127 upstream; FI transit hubs reach 408    // Maximum edges per node
 constexpr uint32_t kMaxAdminsPerTile = 4095;  // Maximum Admins per tile
 constexpr uint32_t kMaxTimeZoneIdExt1 = 1023; // Maximum TimeZones index for first extension level
 // constexpr uint32_t kMaxTimeZoneIdExt2 =
@@ -505,8 +505,8 @@ protected:
   uint64_t lon_offset7_ : 4; // Longitude offset 7th digit of precision
   uint64_t access_ : 12;     // Access through the node - bit field
 
-  uint64_t edge_index_ : 21;    // Index within the node's tile of its first outbound directed edge
-  uint64_t edge_count_ : 7;     // Number of outbound edges (on this level)
+  uint64_t edge_index_ : 19;    // Index within the node's tile of its first outbound directed edge
+  uint64_t edge_count_ : 9;     // Number of outbound edges (on this level)
   uint64_t admin_index_ : 12;   // Index into this tile's administrative information list
   uint64_t timezone_ : 9;       // Time zone
   uint64_t intersection_ : 4;   // Intersection type (see graphconstants.h)
