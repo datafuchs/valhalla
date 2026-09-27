@@ -4282,7 +4282,11 @@ struct graph_parser {
     bss_nodes_.reset(bss_nodes);
     node_linguistics_.reset(node_linguistics);
 
-    if (node_linguistics != nullptr) {
+    // Only when the file is still empty: with several input files the node
+    // pass reopens this sequence once per file (in append mode), and the
+    // placeholder must exist exactly once, at index 0, so that every
+    // linguistic_info_index handed out below equals the record's position.
+    if (node_linguistics != nullptr && node_linguistics_->size() == 0) {
       // push empty struct at index 0
       OSMNodeLinguistic ling;
       node_linguistics_->push_back(ling);
@@ -5361,11 +5365,27 @@ void PBFGraphParser::ParseNodes(const boost::property_tree::ptree& pt,
   // being used in a way.
   // TODO: we know how many knows we expect, stop early once we have that many
   LOG_INFO("Parsing nodes...");
+  // The node linguistics file is created (truncated) for the FIRST input file
+  // only and appended to for every further one — like bss_nodes_file above.
+  // It used to be re-created for every input file while
+  // osmdata.node_linguistic_count kept counting across files, so after a
+  // multi-file build the file held only the last file's records: nodes from
+  // earlier files pointed past its end (BuildTileSet threw
+  // "vector::_M_range_check" from sequence::iterator) or at another node's
+  // record (wrong junction-name language/pronunciation, silently).
+  bool create_linguistics = true;
   for (auto& file : input_files) {
+    // Release (and thereby flush) the previous file's sequences BEFORE opening
+    // new ones: the arguments of the reset() below are constructed before
+    // reset() destroys the old objects, so a reopened append-mode stream would
+    // otherwise start at the old end of file and then be overwritten by the
+    // old object's final flush (or overwrite it).
+    parser.reset(nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr);
     // each time we parse nodes we have to run through the way nodes file from the beginning because
     // because osm node ids are only sorted at the single pbf file level
     parser.reset(nullptr, new sequence<OSMWayNode>(way_nodes_file, false), nullptr, nullptr, nullptr,
-                 nullptr, new sequence<OSMNodeLinguistic>(linguistic_node_file, true));
+                 nullptr, new sequence<OSMNodeLinguistic>(linguistic_node_file, create_linguistics));
+    create_linguistics = false;
     parser.current_way_node_index_ = parser.last_node_ = parser.last_way_ = parser.last_relation_ = 0;
 
     osmium::io::Reader reader(file, osmium::osm_entity_bits::node);
