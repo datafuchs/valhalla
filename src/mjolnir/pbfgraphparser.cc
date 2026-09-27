@@ -5331,6 +5331,9 @@ void PBFGraphParser::ParseNodes(const boost::property_tree::ptree& pt,
     for (auto& file : input_files) {
       parser.current_way_node_index_ = parser.last_node_ = parser.last_way_ = parser.last_relation_ =
           0;
+      // Release (and thereby flush) the previous file's sequence before reopening it in append
+      // mode, see the node pass below.
+      parser.reset(nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr);
       // we send a null way_nodes file so that only the bike share stations are parsed
       parser.reset(nullptr, nullptr, nullptr, nullptr, nullptr,
                    new sequence<OSMBSSNode>(bss_nodes_file, create), nullptr);
@@ -5366,20 +5369,20 @@ void PBFGraphParser::ParseNodes(const boost::property_tree::ptree& pt,
   // TODO: we know how many knows we expect, stop early once we have that many
   LOG_INFO("Parsing nodes...");
   // The node linguistics file is created (truncated) for the FIRST input file
-  // only and appended to for every further one — like bss_nodes_file above.
+  // only and appended to for every further one, like bss_nodes_file above.
   // It used to be re-created for every input file while
-  // osmdata.node_linguistic_count kept counting across files, so after a
-  // multi-file build the file held only the last file's records: nodes from
-  // earlier files pointed past its end (BuildTileSet threw
+  // osmdata.node_linguistic_count kept counting across files. Whatever an
+  // earlier file had already flushed (every full 32 MiB write buffer) was
+  // lost, so its nodes pointed past the end of the file (BuildTileSet threw
   // "vector::_M_range_check" from sequence::iterator) or at another node's
   // record (wrong junction-name language/pronunciation, silently).
   bool create_linguistics = true;
   for (auto& file : input_files) {
     // Release (and thereby flush) the previous file's sequences BEFORE opening
     // new ones: the arguments of the reset() below are constructed before
-    // reset() destroys the old objects, so a reopened append-mode stream would
-    // otherwise start at the old end of file and then be overwritten by the
-    // old object's final flush (or overwrite it).
+    // reset() destroys the old objects, so the reopened sequence's size() would
+    // not include the old object's still-buffered records. reset() relies on
+    // that size to push the index-0 placeholder only once.
     parser.reset(nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr);
     // each time we parse nodes we have to run through the way nodes file from the beginning because
     // because osm node ids are only sorted at the single pbf file level

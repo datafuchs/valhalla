@@ -57,9 +57,19 @@ for (auto& file : input_files) {
    `linguistic_info_index`, is **not** reset, so it keeps counting across
    files. `reset()` also pushes a placeholder record at "index 0" for every
    file.
-3. After the pass the file holds only the **last** file's records. Nodes
-   from earlier files keep indices that point either **past the end of the
-   file** or at **another node's record**.
+3. `midgard::sequence` buffers up to 32 MiB of records (466,033
+   `OSMNodeLinguistic`s) and writes them out when the buffer is full or the
+   object is destroyed. `reset()` constructs the next file's sequence (which
+   truncates) **before** it destroys the previous one, so the previous
+   file's still-buffered tail survives: it is written after the truncation.
+   Everything the previous files had **already flushed** is lost.
+4. After the pass, nodes from earlier files hold indices that point either
+   **past the end of the file** or at **another node's record**.
+
+Small inputs therefore come through intact by accident (nothing had been
+flushed before the truncation). The bug needs an earlier input file with
+more than 466,033 nodes with linguistics. Finland, parsed first, is
+evidently above that.
 
 In `BuildTileSet` (`graphbuilder.cc`), a named intersection reads
 `linguistic_node.at(node.linguistic_info_index())`. `midgard::sequence`'s
@@ -69,11 +79,11 @@ call throws exactly `vector::_M_range_check: __n (which is index − file
 size) >= this->size() (which is 0)`. The thread records the exception, the
 tile fails, and the build terminates.
 
-Why `fi ee` "passes": the Finnish indices happen to land inside Estonia's
-records, so nothing throws, but Finnish junction names silently get
-Estonian language and pronunciation data. That build is **wrong without
-failing**. `fi ee no` fails because Norway, parsed last, has fewer records
-than some of the Finnish indices.
+Why `fi ee` "passes": the Finnish indices that survive happen to land
+inside the shorter file, so nothing throws, but Finnish junction names
+silently get another node's language and pronunciation data. That build is
+**wrong without failing**. In `fi ee no` some indices point past the end
+of the file, and the build fails.
 
 Single-file builds are unaffected, which is why the live FI and EE builds
 never showed it.
@@ -87,13 +97,27 @@ never showed it.
   `linguistic_info_index` equals the record's position.
 - Release (and thereby flush) the previous file's sequences **before**
   opening new ones. `reset()`'s arguments are constructed before `reset()`
-  destroys the old objects, so without this a reopened append-mode stream
-  starts at the old end of file and collides with the old object's final
-  flush.
+  destroys the old objects, so without this the reopened sequence's
+  `size()` misses the old object's buffered records, and the "only while
+  empty" placeholder check above misfires for small files.
+- The bike-share pass (`bss_nodes_file`) gets the same release-first
+  ordering. It already appended correctly; this is for consistency.
 
-The bike-share pass has the same construct-before-destroy ordering for
-`bss_nodes_file`. It's not changed here; we don't use
-`import_bike_share_stations`.
+## Tests
+
+`test/gurka/test_multi_pbf_linguistics.cc`:
+
+- `MultiPbfNodeLinguisticsParser` parses two PBFs, the first with more
+  than 466,033 named junctions, and checks that the linguistics file holds
+  exactly one placeholder plus one record per node, and that every node's
+  index points at its own record. Against the old parser it fails: 476,032
+  records counted, 9,999 in the file.
+- `MultiPbfNodeLinguistics` builds tiles end to end from two small PBFs and
+  checks each named junction's pronunciation. This one passes on the old
+  code too (see above). It guards the tile path.
+
+Both pass with the fix, and so do the existing `graphparser` and
+`gurka_phonemes` suites.
 
 ## Verification plan
 
@@ -103,8 +127,9 @@ The bike-share pass has the same construct-before-destroy ordering for
       `fi-3.6.3-t1`).
 - [ ] `fi ee no` built from the three **separate** PBFs with the new image:
       no failed tiles, and the build's country gate passes.
-- [ ] The `Number of nodes with linguistics = N` log line equals the record
-      count of the linguistics file after the node pass.
+- [x] The `Number of nodes with linguistics = N` log line equals the record
+      count of the linguistics file after the node pass (covered by
+      `MultiPbfNodeLinguisticsParser`).
 - [ ] Spot check: a Finnish named junction returns Finnish/Swedish names,
       not Estonian ones, in `/route` maneuvers.
 - [ ] Offer upstream (issue + PR against `valhalla/valhalla` master).
