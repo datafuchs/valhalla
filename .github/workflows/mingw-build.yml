@@ -21,13 +21,12 @@ jobs:
             mingw64-gdal \
             mingw64-python3 \
             protobuf-compiler
-      - uses: actions/checkout@v2
-      - name: Checkout submodules
-        shell: bash
-        run: |
-          auth_header="$(git config --local --get http.https://github.com/.extraheader)"
-          git submodule sync --recursive
-          git -c "http.extraheader=$auth_header" -c protocol.version=2 submodule update --init --force --recursive --depth=1
+      # checkout@v4 fetches the submodules itself. The old separate submodule step ran git outside
+      # the checkout's temporary safe.directory config, so a current git in this container refused
+      # the workspace ("--local can only be used inside a git repository").
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
       - name: Configure and run build
         run: |
           mkdir build && cd build \
