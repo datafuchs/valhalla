@@ -1,6 +1,7 @@
 ## UNRELEASED
 * **Removed**
 * **Bug Fix**
+   * FIXED: node linguistics (junction-name language/pronunciation) corrupted when building tiles from several input PBFs [#1](https://github.com/datafuchs/valhalla/pull/1)
 * **Enhancement**
    * CHANGED: MinGW cross-build works again (CI job fixed for current Fedora; `nmake` chosen by build host; `_WIN32_WINNT` defined for MinGW in `tz_alt.cpp`) [#3](https://github.com/datafuchs/valhalla/pull/3)
    * CHANGED: move `GraphTile::GetTileId` to `GraphId::FromTilePath` as a static factory ctor [#6237](https://github.com/valhalla/valhalla/pull/6237)
