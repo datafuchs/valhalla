@@ -3,6 +3,7 @@
 * **Bug Fix**
    * FIXED: node linguistics (junction-name language/pronunciation) corrupted when building tiles from several input PBFs [#1](https://github.com/datafuchs/valhalla/pull/1)
 * **Enhancement**
+   * CHANGED: air/ferry problem statement: correct the route-type remap scope (Finnish feeds only), add the air + helicopter scope section [#4](https://github.com/datafuchs/valhalla/pull/4)
    * CHANGED: MinGW cross-build works again (CI job fixed for current Fedora; `nmake` chosen by build host; `_WIN32_WINNT` defined for MinGW in `tz_alt.cpp`) [#3](https://github.com/datafuchs/valhalla/pull/3)
    * CHANGED: move `GraphTile::GetTileId` to `GraphId::FromTilePath` as a static factory ctor [#6237](https://github.com/valhalla/valhalla/pull/6237)
    * CHANGED: use `filtered_edges` in CostMatrix's second pass [#6236](https://github.com/valhalla/valhalla/pull/6236) 
