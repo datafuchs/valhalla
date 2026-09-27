@@ -39,6 +39,9 @@ jobs:
           && mingw64-make -j$(nproc) install
       - name: Configure and run build
         run: |
+          # protobuf's CMake package points protobuf::protoc at the Windows protoc.exe, which the
+          # generator steps cannot run here. Swap in the host protoc (same protobuf version).
+          for f in /usr/x86_64-w64-mingw32/sys-root/mingw/bin/protoc*.exe*; do ln -sf /usr/bin/protoc "$f"; done
           mkdir build && cd build \
           && mingw64-cmake .. \
             -DCMAKE_CROSS_COMPILING=1 \
