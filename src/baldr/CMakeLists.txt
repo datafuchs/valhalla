@@ -2,8 +2,8 @@
 set(tz_db_files africa antarctica asia australasia backward etcetera europe
   northamerica southamerica leapseconds)
 
-# Select make command based on platform
-if(WIN32)
+# Select make command based on the build host (the target may be Windows when cross-compiling)
+if(CMAKE_HOST_WIN32)
   set(MAKE_CMD nmake)
 else()
   set(MAKE_CMD make)
