@@ -176,8 +176,8 @@ design.
    helicopters.
 3. **Airports and heliports as stops.** Airport stops sit inside airport
    grounds and need proper **road-network linking** (terminal entrances,
-   rail at HEL). Check the stitching distance limits. Heliports are often
-   small pads off the road network (Norwegian islands, hospitals); linking
+   rail at Helsinki Airport). Check the stitching distance limits. Heliports
+   are often small pads off the road network (Norwegian islands, hospitals); linking
    must tolerate that.
 4. **Time buffers (what makes results honest).** Check-in/security before
    departure and deplaning/baggage after arrival, **per subtype** (plane
