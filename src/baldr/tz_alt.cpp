@@ -70,11 +70,10 @@
 
 #    ifndef NTDDI_VERSION
 #      define NTDDI_VERSION 0x06000000
+       // Vista (0x0600). An empty _WIN32_WINNT breaks every `#if _WIN32_WINNT ...` in
+       // current mingw-w64 headers; _WIN32_WINNT_VISTA itself comes from <sdkddkver.h>.
 #      ifndef _WIN32_WINNT
-#          define _WIN32_WINNT
-#      endif
-#      ifndef _WIN32_WINNT_VISTA
-#          define _WIN32_WINNT_VISTA
+#          define _WIN32_WINNT 0x0600
 #      endif
 #    elif NTDDI_VERSION < 0x06000000
 #      warning "If this fails to compile NTDDI_VERSION may be to low. See comments above."
