@@ -135,7 +135,68 @@ wiring them into a build is "a separate decision" nobody has made yet.
 8. Viking Line and Helsinki–Mariehamn are not covered by the ferries feed
    today — accept the gap, or pursue a data source?
 
-## 6. Links
+## 6. Scope: what proper air (and helicopter) support has to address
+
+Added 2026-09-27 at Jens's request. **Helicopters are in scope from the
+start** ("we must also think about helicopter routes, even though it might
+not be present in our GTFS yet"). They are the same mode as planes, with
+their own buffers. This is a checklist for the dedicated session, not a
+design.
+
+1. **Data model (core).** The transit vehicle type is a closed 0–7 enum
+   (`valhalla/baldr/graphconstants.h`, `proto/transit.proto`). Add **air**
+   with a **plane / helicopter** subtype (GTFS extended 1100–1114 is the air
+   family; **1110 = helicopter service**). It also needs a new edge `Use` for
+   flight legs and the matching `proto`/`TripLeg` enums. The tile format
+   changes: every tile is rebuilt and every reader needs the new image.
+2. **Ingest.** Replace the unchecked `route_type` cast
+   (`src/mjolnir/ingest_transit.cc:645`) with an explicit mapping, and
+   reject or report unknown types instead of producing out-of-range values.
+   Many feeds label helicopter routes as plain domestic air (1102), so we
+   need an **override list** (operator / route / aircraft type) to mark
+   helicopters.
+3. **Airports and heliports as stops.** Airport stops sit inside airport
+   grounds and need proper **road-network linking** (terminal entrances,
+   rail at HEL). Check the stitching distance limits. Heliports are often
+   small pads off the road network (Norwegian islands, hospitals); linking
+   must tolerate that.
+4. **Time buffers (what makes results honest).** Check-in/security before
+   departure and deplaning/baggage after arrival, **per subtype** (plane
+   domestic/Schengen vs. international; much shorter for helicopters), plus
+   minimum connection times between flights. Today Valhalla only has global
+   transfer penalties, so this needs mode-specific buffers in the transit
+   costing, fed from one shared constants set (the weekly-commute design in
+   datafuchs/hausfuchs#60 uses the same numbers).
+5. **Costing and request options.** `use_air` / `use_helicopter` preference
+   weights like `use_bus` / `use_rail`, operator filters, and defaults that
+   never suggest a 40 km hop by plane.
+6. **Limits.** Our multimodal `max_distance` is 250 km (flights are
+   300–1,500 km). Isochrones are capped at 120 min. **Verify that the
+   `TransitDeparture` departure and elapsed-time fields fit long, late and
+   overnight legs.** The matrix endpoint doesn't do multimodal; the
+   weekly-commute design works around that (R5 or `/route`).
+7. **Responses and labels.** `travel_type` air/helicopter in maneuvers,
+   narrative text in fi/sv/en/et ("Take flight AY431 to Oulu"), the OSRM
+   serializer mapping. On our side: frontend icons and the admin transit map
+   (hausfuchs `admin_transit_endpoints.py` already knows "air").
+8. **Data.** Planes: Entur/Avinor, Digitransit (Finnish domestic), the
+   Finnair/airBaltic/Estonian-domestic scrapers (DEMO ONLY, off by default).
+   Helicopters: none in our feeds today. Norway has scheduled helicopter
+   routes (e.g. Bodø–Værøy/Røst), possibly in Entur under a generic air
+   type. No known scheduled routes in Finland or Estonia. Once the mode
+   exists, adding them is data work.
+9. **Tests.** Gurka tests on synthetic GTFS with plane and helicopter routes
+   (buffers, labels, costing weights, limits), and regression tests that
+   existing modes route exactly as before. Real-data golden routes: Oulu →
+   Helsinki, Hammerfest → Alta, Bodø → Værøy (helicopter), Tallinn → Oslo.
+
+**Estimate (unvalidated):** 3–5 working days for the fork change, image, a
+full FI+EE+NO build and verification. It stacks on datafuchs/valhalla#1, so
+one new image carries both. A stop-gap for demos (air mapped to an existing
+type, flat transfer penalty, higher distance limit) is possible within about
+a day, but it mislabels flights as trains.
+
+## 7. Links
 
 - datafuchs/geofuchs-hydra8#276 — flights GTFS feed (`scripts/valhalla/flights/`)
 - datafuchs/geofuchs-hydra8#277 — Gulf of Finland ferries GTFS feed (`scripts/valhalla/ferries/`)
