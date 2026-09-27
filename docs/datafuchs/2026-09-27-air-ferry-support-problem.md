@@ -28,13 +28,18 @@ Two of our own build scripts (`scripts/valhalla/build_tiles.sh:508-529` and
 200-299 -> 3 (bus)   400-499 -> 1 (metro)  1000-1099 -> 4 (ferry)
 ```
 
-Everything else — 300-399, 500-699, 800-899, and everything ≥1100 —
-is **left unmapped** and reaches Valhalla ingest exactly as the source feed
-wrote it. Norway's Entur national feed (`no_entur`, already in
-`config/fi_gtfs_feeds.yaml`'s Norwegian counterpart) carries real routes in
-that unmapped space today: `route_type=1102` ("Domestic Air Service"), 101
-routes / 2,295 trips, all Norwegian airports (concentrated in Finnmark); and
-`route_type=1300` ("Aerial Lift"), 2 routes.
+Everything else (300-399, 500-699, 800-899, and everything ≥1100) is **left
+unmapped**. **Correction (2026-09-27, after merge):** `remap_route_types()`
+runs **only for `fi_*` feeds** (`cleanse_gtfs_feeds`,
+`build_tiles_unified.sh:518-524`, pinned by the test
+`test_no_hsl_or_vr_remap_applied_to_no_feeds`). Every **non-Finnish** feed
+reaches Valhalla ingest with **all** its extended route types exactly as the
+source wrote them, not just the ≥1100 ones. Norway's Entur national feed
+(`no_entur`) is the case in point: 7xx buses, 1xx rail, 9xx trams, **10xx
+ferries**, `route_type=1102` ("Domestic Air Service", 101 routes / 2,295
+trips, all Norwegian airports, concentrated in Finnmark) and
+`route_type=1300` ("Aerial Lift", 2 routes). All of them go through the
+unchecked cast in section 2.
 
 Separately, two internal GTFS feeds we built this week are **not wired into
 any Valhalla build**: the flights feed (hydra8 #276,
@@ -72,6 +77,14 @@ wiring them into a build is "a separate decision" nobody has made yet.
   specifically because 1102 is Valhalla-incompatible today
   (`flights/README.md:297-308`). The ferries feed emits `route_type=4`
   (Ferry) — a base type Valhalla already models correctly.
+- **Observed on the running candidate** (FI+EE+NO tiles, merged-PBF build,
+  2026-09-27):
+  - Hammerfest → Alta routes multimodally (177 min), but the Entur buses come
+    back as `travel_type: tram`. No flight is used.
+  - Helsinki → Tallinn works by car (139 min, OSM car ferry). Multimodal
+    fails with `Locations are in unconnected regions`: no transit ferry
+    crosses the Gulf, because Tallink/Eckerö are only in the unwired ferries
+    feed (hydra8 #277).
 
 ## 3. What is not yet known (for the dedicated session)
 
@@ -134,6 +147,12 @@ wiring them into a build is "a separate decision" nobody has made yet.
    30 Finnish domestic PSO routes in the flights feed?
 8. Viking Line and Helsinki–Mariehamn are not covered by the ferries feed
    today — accept the gap, or pursue a data source?
+9. What extended-route-type mapping should Entur (and any other non-Finnish
+   feed) get? The HSL/Waltti remap was deliberately limited to `fi_*`, so
+   first establish why before reusing it, rather than applying it blindly.
+10. Wiring the Gulf ferries feed (#277) is also what makes cross-Gulf
+    public-transport trips (Helsinki ↔ Tallinn) connect at all. Does that
+    move it ahead of the air work?
 
 ## 6. Scope: what proper air (and helicopter) support has to address
 
