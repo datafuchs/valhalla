@@ -22,7 +22,6 @@ jobs:
             mingw64-protobuf \
             mingw64-geos \
             mingw64-gdal \
-            mingw64-python3 \
             protobuf-compiler
       # checkout@v4 fetches the submodules itself. The old separate submodule step ran git outside
       # the checkout's temporary safe.directory config, so a current git in this container refused
@@ -49,13 +48,10 @@ jobs:
             -DENABLE_TOOLS=OFF \
             -DENABLE_DATA_TOOLS=OFF \
             -DENABLE_SERVICES=OFF \
-            -DENABLE_PYTHON_BINDINGS=ON \
+            -DENABLE_PYTHON_BINDINGS=OFF \
             -DENABLE_CCACHE=OFF \
             -DENABLE_TESTS=OFF \
             -DLOGGING_LEVEL=DEBUG \
             -DProtobuf_PROTOC_EXECUTABLE=/usr/bin/protoc \
             -DBoost_PROGRAM_OPTIONS_LIBRARY=/usr/x86_64-w64-mingw32/sys-root/mingw/lib/libboost_program_options-mt-x64.dll.a \
-            -DPYTHON_EXECUTABLE=/usr/x86_64-w64-mingw32/bin/python3 \
-            -DPYTHON_LIBRARIES=/usr/x86_64-w64-mingw32/sys-root/mingw/lib/libpython3.9.dll.a \
-            -DPYTHON_INCLUDE_DIRS=/usr/x86_64-w64-mingw32/sys-root/mingw/include/python3.9 \
           && mingw64-make -j$(nproc)
