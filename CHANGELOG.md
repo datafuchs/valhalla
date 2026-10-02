@@ -1,6 +1,7 @@
 ## UNRELEASED
 * **Removed**
 * **Bug Fix**
+   * FIXED: `valhalla_convert_transit` silently dropped the transit lines of a platform past `kMaxEdgesPerNode` (511) line edges, so those departures could not be boarded. A platform that needs more edges is now served by extra platform nodes at the same location (same stop, linked to the station like a sibling platform, all lines of one route on one node, arriving trips of that route land on it). A node that would still exceed the limit fails the conversion with the stop's name.
    * FIXED: elevation stage crashed with "EdgeInfo offsets incorrect when reading GraphTile" on transit tiles that hold EdgeInfo no directed edge references (platforms clamped at 511 line edges); the deserializer now compacts them. Encoded elevation is always written with the sample count readers derive from the edge length.
    * FIXED: node linguistics (junction-name language/pronunciation) corrupted when building tiles from several input PBFs [#1](https://github.com/datafuchs/valhalla/pull/1)
 * **Enhancement**
