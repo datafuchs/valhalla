@@ -1,6 +1,7 @@
 ## UNRELEASED
 * **Removed**
 * **Bug Fix**
+   * FIXED: elevation stage crashed with "EdgeInfo offsets incorrect when reading GraphTile" on transit tiles that hold EdgeInfo no directed edge references (platforms clamped at 511 line edges); the deserializer now compacts them. Encoded elevation is always written with the sample count readers derive from the edge length.
    * FIXED: node linguistics (junction-name language/pronunciation) corrupted when building tiles from several input PBFs [#1](https://github.com/datafuchs/valhalla/pull/1)
 * **Enhancement**
    * CHANGED: air/ferry problem statement: correct the route-type remap scope (Finnish feeds only), add the air + helicopter scope section [#4](https://github.com/datafuchs/valhalla/pull/4)
