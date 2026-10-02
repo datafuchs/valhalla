@@ -58,7 +58,12 @@ int main(int argc, char** argv) {
     return EXIT_FAILURE;
   }
 
-  auto all_tiles = valhalla::mjolnir::convert_transit(config);
-  valhalla::mjolnir::ValidateTransit::Validate(config, all_tiles, onestoptests);
+  try {
+    auto all_tiles = valhalla::mjolnir::convert_transit(config);
+    valhalla::mjolnir::ValidateTransit::Validate(config, all_tiles, onestoptests);
+  } catch (const std::exception& e) {
+    LOG_ERROR(std::string("valhalla_convert_transit failed: ") + e.what());
+    return EXIT_FAILURE;
+  }
   return 0;
 }

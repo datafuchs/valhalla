@@ -612,6 +612,10 @@ protected:
   // The edgeinfo list
   std::list<EdgeInfoBuilder> edgeinfo_list_;
 
+  // Compacted copy of the EdgeInfo block, only used when deserializing a tile that holds
+  // EdgeInfo records no directed edge references (edgeinfo_ then points here).
+  std::string compacted_edgeinfo_;
+
   // Text list offset and map
   uint32_t text_list_offset_ = 0;
   std::unordered_map<std::string, uint32_t> text_offset_map_;

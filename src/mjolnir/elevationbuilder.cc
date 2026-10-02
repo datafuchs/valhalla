@@ -45,6 +45,17 @@ std::vector<int8_t> encode_edge_elevation(const std::unique_ptr<valhalla::skadi:
   std::vector<PointLL> resampled =
       valhalla::midgard::uniform_resample_spherical_polyline(shape, length, n);
 
+  // The number of encoded values is not stored in the tile: readers (EdgeInfo and the
+  // GraphTileBuilder deserializer) derive it from the directed edge length. When the
+  // shape's own spherical length falls short of the stored edge length (stop-to-stop
+  // transit geometry, rounding of long edges) the resampler returns fewer than n
+  // points, the record would be written shorter than every reader expects, and the
+  // next record would be read at the wrong offset. Hold the last shape point for the
+  // missing samples so the encoding always has exactly n - 2 values.
+  if (resampled.size() < n && !shape.empty()) {
+    resampled.resize(n, shape.back());
+  }
+
   // Get elevation (height) at each sampled point along the edge.
   std::vector<double> heights(resampled.size());
   heights = sample->get_all(resampled);
@@ -72,15 +83,15 @@ std::vector<int8_t> encode_btf_elevation(const std::unique_ptr<valhalla::skadi::
                                          const std::vector<PointLL>& shape,
                                          const uint32_t length,
                                          uint32_t wayid) {
-  // Compute a uniform sampling interval along the edge based on its length.
-  double interval = sampling_interval(length);
-
   // Sample at the first and last shape point
   double h1 = sample->get(shape.front());
   double h2 = sample->get(shape.back());
 
-  // Use linear interpolation from h1 to h2 along the length of the edge
-  uint32_t n = static_cast<uint32_t>(length / interval) + 1;
+  // Use linear interpolation from h1 to h2 along the length of the edge. Take the
+  // sample count from encoded_elevation_count(), the same function every reader uses
+  // to size this record: truncating length / sampling_interval(length) can land one
+  // below the integer it represents and write a record one byte short.
+  uint32_t n = encoded_elevation_count(length) + 2;
   std::vector<double> heights(n);
   heights.front() = h1;
   float delta = (h2 - h1) / n;

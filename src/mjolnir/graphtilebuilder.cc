@@ -177,17 +177,35 @@ GraphTileBuilder::GraphTileBuilder(const std::string& tile_dir,
   // structure plus the variable sized data (the via Ids).
 
   // EdgeInfo. Create list of EdgeInfoBuilders. Add to text offset set.
+  //
+  // A tile can legitimately hold EdgeInfo records that no directed edge references
+  // any more: TransitBuilder rebuilds a transit tile's directed edge list from each
+  // node's edge_count, so when convert_transit had to clamp a busy platform to
+  // kMaxEdgesPerNode the line edges past the clamp are dropped while their EdgeInfo
+  // records stay behind. Such unreferenced records show up here as a gap between the
+  // offset we expect next and the next offset a directed edge stores. Each record is
+  // decoded at the offset the directed edge stores, so a gap is safe to compact: drop
+  // the unreferenced bytes and remap the directed edges to the compacted offsets.
+  // Only an overlap (a stored offset below the end of the previous record) means the
+  // records themselves cannot be decoded, and that stays fatal.
   edge_info_offset_ = 0;
   edgeinfo_offset_map_.clear();
+  std::unordered_map<uint32_t, uint32_t> compacted_offsets; // stored -> compacted
+  uint32_t stored_end = 0;         // end of the previous record, in stored offsets
+  uint32_t unreferenced_bytes = 0; // bytes of unreferenced records skipped so far
   for (auto edgemap : edge_info_offsets) {
     auto offset = edgemap.first;
 
     // Verify the offsets match as we create the edge info builder list
-    if (offset != edge_info_offset_) {
+    if (offset < stored_end) {
       LOG_ERROR("GraphTileBuilder TileID: " + std::to_string(header_->graphid().tileid()) +
                 " offset stored in directed edge: = " + std::to_string(offset) +
-                " current ei offset= " + std::to_string(edge_info_offset_));
+                " current ei offset= " + std::to_string(stored_end));
       throw std::runtime_error("EdgeInfo offsets incorrect when reading GraphTile");
+    }
+    unreferenced_bytes += offset - stored_end;
+    if (unreferenced_bytes > 0) {
+      compacted_offsets[offset] = edge_info_offset_;
     }
 
     // At this time, encoded elevation is empty and does not need to be serialized...
@@ -211,11 +229,33 @@ GraphTileBuilder::GraphTileBuilder(const std::string& tile_dir,
       eib.set_encoded_elevation(ei.encoded_elevation(length, interval));
     }
 
-    edge_info_offset_ += eib.SizeOf();
-    edgeinfo_list_.emplace_back(std::move(eib));
+    // Associate the (compacted) offset to the index in the edgeinfo list
+    edgeinfo_offset_map_[edge_info_offset_] = &edgeinfo_list_.emplace_back(std::move(eib));
+    stored_end = offset + edgeinfo_list_.back().SizeOf();
+    edge_info_offset_ += edgeinfo_list_.back().SizeOf();
+  }
 
-    // Associate the offset to the index in the edgeinfo list
-    edgeinfo_offset_map_[offset] = &edgeinfo_list_.back();
+  // Point the directed edges at the compacted EdgeInfo offsets. Callers read EdgeInfo
+  // through GraphTile::edgeinfo() (raw tile memory at the directed edge's offset), so
+  // also swap in a compacted copy of the EdgeInfo block that matches the new offsets.
+  if (unreferenced_bytes > 0) {
+    for (auto& diredge : directededges_builder_) {
+      auto found = compacted_offsets.find(diredge.edgeinfo_offset());
+      if (found != compacted_offsets.end()) {
+        diredge.set_edgeinfo_offset(found->second);
+      }
+    }
+    std::ostringstream compacted;
+    for (const auto& eib : edgeinfo_list_) {
+      compacted << eib;
+    }
+    compacted_edgeinfo_ = compacted.str();
+    edgeinfo_ = compacted_edgeinfo_.data();
+    edgeinfo_size_ = compacted_edgeinfo_.size();
+    LOG_WARN("GraphTileBuilder TileID: " + std::to_string(header_->graphid().tileid()) +
+             " level " + std::to_string(header_->graphid().level()) + " dropped " +
+             std::to_string(unreferenced_bytes) +
+             " bytes of EdgeInfo no directed edge references (offsets compacted)");
   }
 
   // Text list
